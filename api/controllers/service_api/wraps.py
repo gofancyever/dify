@@ -21,9 +21,8 @@ from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
-from services.account_service import TenantService, RegisterService
+from services.account_service import RegisterService, TenantService
 from services.feature_service import FeatureService
-import pdb
 
 
 class WhereisUserArg(Enum):
