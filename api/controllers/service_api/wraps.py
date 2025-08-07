@@ -1,9 +1,11 @@
+import json
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
+from urllib.parse import unquote
 
 from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
@@ -19,7 +21,9 @@ from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
+from services.account_service import TenantService, RegisterService
 from services.feature_service import FeatureService
+import pdb
 
 
 class WhereisUserArg(Enum):
@@ -276,6 +280,117 @@ def validate_and_get_api_token(scope: str | None = None):
             session.commit()
 
     return api_token
+
+
+def validate_sf_token(view=None):
+    """
+    Decorator to validate sf-user token from gateway proxy interface and get user/tenant info.
+    Used when accessing through gateway proxy.
+    
+    Expected sf-user data format:
+    {
+        "userId": "7213440552216101011",
+        "nickName": "管理员", 
+        "langCode": "zhCN",
+        "userName": "developer",
+        "userType": "02",
+        "tenantId": "7213440552216201011",
+        "deptId": 103
+    }
+    
+    Email is generated as: userName@dify.ai
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_view(*args, **kwargs):
+            sf_user = request.headers.get("sf-user")
+            print(sf_user)
+            if not sf_user:
+                raise Unauthorized("sf-user header must be provided when using gateway proxy")
+            
+            try:
+                # Decode sf-user information
+                sf_user = sf_user.replace('+', ' ')
+                sf_user = unquote(sf_user)
+                user_data = json.loads(sf_user)
+                
+                # Extract tenant ID from user data
+                tenant_id = user_data.get('tenantId')
+                if not tenant_id:
+                    raise ValueError("tenantId not found in sf-user data")
+                
+                # Check if tenant exists by external tenant ID
+                # Use tenant name as identifier based on tenantId
+                tenant_name = f"Tenant_{tenant_id}"
+                tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+                
+                if not tenant:
+                    # Create tenant if it doesn't exist
+                    tenant = TenantService.create_tenant(name=tenant_name)
+                
+                # Check if tenant is active
+                if tenant.status == TenantStatus.ARCHIVE:
+                    raise Forbidden("The workspace's status is archived.")
+                
+                # Extract user information
+                user_name = user_data.get('userName')
+                nick_name = user_data.get('nickName', user_name)
+                user_id = user_data.get('userId')
+                
+                if not user_name:
+                    raise ValueError("userName not found in sf-user data")
+                
+                # Generate email using userName@dify.ai format
+                user_email = f"{user_name}@dify.ai"
+                
+                # Check if user account exists
+                account = db.session.query(Account).filter(Account.email == user_email).first()
+                
+                if not account:
+                    # Create user account if it doesn't exist
+                    account = RegisterService.register(
+                        email=user_email,
+                        name=nick_name or user_name,
+                        create_workspace_required=False
+                    )
+                
+                # Check if user is associated with the tenant
+                tenant_account_join = (
+                    db.session.query(TenantAccountJoin)
+                    .filter(TenantAccountJoin.tenant_id == tenant.id)
+                    .filter(TenantAccountJoin.account_id == account.id)
+                    .first()
+                )
+                
+                if not tenant_account_join:
+                    # Associate user with tenant
+                    TenantService.create_tenant_member(tenant, account, role="normal")
+                
+                # Set current tenant for the user
+                account.current_tenant = tenant
+                current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+                
+                # Add tenant, account, and user_data to kwargs for the view function
+                kwargs["tenant"] = tenant
+                kwargs["account"] = account
+                kwargs["user_data"] = user_data
+                print(kwargs)
+                return view_func(*args, **kwargs)
+                
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Invalid sf-user header format: {str(e)}")
+                raise Unauthorized(f"Invalid sf-user header format: {str(e)}")
+            except Exception as e:
+                print(f"Failed to validate sf-user token: {str(e)}")
+                raise Unauthorized(f"Failed to validate sf-user token: {str(e)}")
+        
+        return decorated_view
+    
+    if view is None:
+        return decorator
+    else:
+        return decorator(view)
 
 
 def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str] = None) -> EndUser:

@@ -1,14 +1,15 @@
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, marshal_with,reqparse
 
 from controllers.common import fields
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
-from controllers.service_api.wraps import validate_app_token
+from controllers.service_api.wraps import validate_app_token,validate_sf_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.model import App, AppMode
 from services.app_service import AppService
+import pdb
 
-
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
@@ -50,6 +51,25 @@ class AppInfoApi(Resource):
         return {"name": app_model.name, "description": app_model.description, "tags": tags, "mode": app_model.mode}
 
 
+class AppCreateApi(Resource):
+    @validate_sf_token
+    def post(self,tenant,account,user_data):
+        print(tenant,account,user_data)
+        parser = reqparse.RequestParser()
+        parser.add_argument("name", type=str, required=True, location="json")
+        parser.add_argument("description", type=str, location="json")
+        parser.add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
+        parser.add_argument("icon_type", type=str, location="json")
+        parser.add_argument("icon", type=str, location="json")
+        parser.add_argument("icon_background", type=str, location="json")
+        args = parser.parse_args()
+    
+        app_service = AppService()
+        app = app_service.create_app(tenant.id, args, account)
+        return { 'id': app.id }
+
+
 api.add_resource(AppParameterApi, "/parameters")
 api.add_resource(AppMetaApi, "/meta")
 api.add_resource(AppInfoApi, "/info")
+api.add_resource(AppCreateApi, "/app/create")
