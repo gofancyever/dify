@@ -307,7 +307,10 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
   options = {
     ...defaultOptions,
     ...options,
-    headers: { ...defaultOptions.headers, ...options.headers },
+    headers: {
+ ...defaultOptions.headers,
+...options.headers,
+},
   }
   return new Promise((resolve, reject) => {
     const xhr = options.xhr
@@ -367,7 +370,6 @@ export const ssePost = async (
   const abortController = new AbortController()
 
   const token = localStorage.getItem('console_token')
-
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
@@ -421,7 +423,10 @@ export const ssePost = async (
         }
         else {
           res.json().then((data) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+            Toast.notify({
+ type: 'error',
+message: data.message || 'Server Error',
+})
           })
           onError?.('Server Error')
         }
@@ -431,8 +436,12 @@ export const ssePost = async (
         if (moreInfo.errorMessage) {
           onError?.(moreInfo.errorMessage, moreInfo.errorCode)
           // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')) {
+ Toast.notify({
+ type: 'error',
+message: moreInfo.errorMessage,
+})
+}
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
@@ -462,8 +471,12 @@ export const ssePost = async (
         onAgentLog,
       )
     }).catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        Toast.notify({ type: 'error', message: e })
+      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property')) {
+ Toast.notify({
+ type: 'error',
+message: e,
+})
+}
       onError?.(e)
     })
 }
@@ -511,7 +524,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
-        Toast.notify({ type: 'error', message, duration: 4000 })
+        Toast.notify({
+ type: 'error',
+message,
+duration: 4000,
+})
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
@@ -532,7 +549,10 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (!silent) {
-        Toast.notify({ type: 'error', message })
+        Toast.notify({
+ type: 'error',
+message,
+})
         return Promise.reject(err)
       }
       globalThis.location.href = loginUrl
@@ -555,12 +575,18 @@ export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 
 // For public API
 export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
+  return get<T>(url, options, {
+ ...otherOptions,
+isPublicAPI: true,
+})
 }
 
 // For Marketplace API
 export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
+  return get<T>(url, options, {
+ ...otherOptions,
+isMarketplaceAPI: true,
+})
 }
 
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -569,11 +595,17 @@ export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions)
 
 // For Marketplace API
 export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
+  return post<T>(url, options, {
+ ...otherOptions,
+isMarketplaceAPI: true,
+})
 }
 
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
+  return post<T>(url, options, {
+ ...otherOptions,
+isPublicAPI: true,
+})
 }
 
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -581,7 +613,10 @@ export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 }
 
 export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
+  return put<T>(url, options, {
+ ...otherOptions,
+isPublicAPI: true,
+})
 }
 
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -589,7 +624,10 @@ export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 }
 
 export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
+  return del<T>(url, options, {
+ ...otherOptions,
+isPublicAPI: true,
+})
 }
 
 export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -597,5 +635,8 @@ export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions
 }
 
 export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
+  return patch<T>(url, options, {
+ ...otherOptions,
+isPublicAPI: true,
+})
 }

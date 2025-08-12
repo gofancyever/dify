@@ -30,6 +30,7 @@ const translation = {
   reset: 'Please run following command to reset your password',
   withGitHub: 'Continue with GitHub',
   withGoogle: 'Continue with Google',
+  withShufeng: 'Continue with Shufeng',
   withSSO: 'Continue with SSO',
   rightTitle: 'Unlock the full potential of LLM',
   rightDesc: 'Effortlessly build visually captivating, operable, and improvable AI applications.',

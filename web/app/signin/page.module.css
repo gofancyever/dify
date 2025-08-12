@@ -5,3 +5,7 @@
 .googleIcon {
   background: center/contain url('./assets/google.svg');
 }
+
+.shufengIcon {
+  background: center/contain url('./assets/shufeng.svg');
+}
