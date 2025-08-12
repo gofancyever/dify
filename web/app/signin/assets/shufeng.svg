@@ -1,0 +1,6 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 2L3 7V18H8V13H12V18H17V7L10 2Z" fill="#2563EB"/>
+<path d="M10 2L17 7V18H12V13H8V18H3V7L10 2Z" fill="#1D4ED8" opacity="0.7"/>
+<circle cx="10" cy="10" r="2" fill="#FFFFFF"/>
+<text x="10" y="15" text-anchor="middle" fill="#FFFFFF" font-size="3" font-family="sans-serif">数风</text>
+</svg>
