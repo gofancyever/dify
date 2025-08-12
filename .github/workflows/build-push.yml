@@ -16,13 +16,13 @@ concurrency:
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
+  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'sf-service/dify-web' }}
+  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'sf-service/dify-api' }}
 
 jobs:
   build:
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
-    if: github.repository == 'langgenius/dify'
+    if: github.repository == 'sf-service/dify'
     strategy:
       matrix:
         include:
@@ -98,7 +98,7 @@ jobs:
   create-manifest:
     needs: build
     runs-on: ubuntu-latest
-    if: github.repository == 'langgenius/dify'
+    if: github.repository == 'sf-service/dify'
     strategy:
       matrix:
         include:
@@ -116,11 +116,12 @@ jobs:
           pattern: digests-${{ matrix.context }}-*
           merge-multiple: true
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Login to ACR
+        uses: aliyun/acr-login@v1
         with:
-          username: ${{ env.DOCKERHUB_USER }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          login-server: https://registry.cn-beijing.aliyuncs.com
+          username: "${{ secrets.REGISTRY_USERNAME }}"
+          password: "${{ secrets.REGISTRY_PASSWORD }}"
 
       - name: Extract metadata for Docker
         id: meta
