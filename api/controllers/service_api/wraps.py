@@ -345,7 +345,7 @@ def validate_sf_token(view=None):
                     account = RegisterService.register(
                         email=user_email,
                         name=nick_name or user_name,
-                        password='123456',
+                        password=user_email,
                         create_workspace_required=True,
                     )
                     
