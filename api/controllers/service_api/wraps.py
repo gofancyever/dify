@@ -1,9 +1,11 @@
+import json
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
-from typing import Optional
+from typing import Optional, Union
+from urllib.parse import unquote
 
 from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
@@ -13,12 +15,15 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import _get_user
+from models import App, AppMode
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import RateLimitLog
-from models.model import ApiToken, App, EndUser
+from models.model import ApiToken, EndUser
+from services.account_service import RegisterService
 from services.feature_service import FeatureService
 
 
@@ -99,12 +104,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = create_or_update_end_user_for_user_id(app_model, user_id)
-                kwargs["end_user"] = end_user
-
-                # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+                kwargs["end_user"] = create_or_update_end_user_for_user_id(app_model, user_id)
 
             return view_func(*args, **kwargs)
 
@@ -281,6 +281,139 @@ def validate_and_get_api_token(scope: str | None = None):
             session.commit()
 
     return api_token
+
+
+def validate_sf_token(view=None):
+    """
+    Decorator to validate sf-user token from gateway proxy interface and get user/tenant info.
+    Used when accessing through gateway proxy.
+    
+    Expected sf-user data format:
+    {
+        "userId": "7213440552216101011",
+        "nickName": "管理员", 
+        "langCode": "zhCN",
+        "userName": "developer",
+        "userType": "02",
+        "tenantId": "7213440552216201011",
+        "deptId": 103
+    }
+    
+    Email is generated as: userName@dify.ai
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_view(*args, **kwargs):
+            sf_user = request.headers.get("sf-user")
+            if not sf_user:
+                raise Unauthorized("sf-user header must be provided when using gateway proxy")
+            
+            try:
+                # Decode sf-user information
+                sf_user = sf_user.replace('+', ' ')
+                sf_user = unquote(sf_user)
+                user_data = json.loads(sf_user)
+                
+                # Extract user information
+                user_name = user_data.get('userName')
+                nick_name = user_data.get('nickName', user_name)
+                user_id = user_data.get('userId')
+                
+                if not user_name:
+                    raise ValueError("userName not found in sf-user data")
+                
+                user_email = f"{user_name}@dify.ai"
+                    
+                # Check if user account exists
+                account = db.session.query(Account).filter(Account.email == user_email).first()
+                
+                if account:
+                    tenant_account_join = (
+                        db.session.query(Tenant, TenantAccountJoin)
+                        .filter(TenantAccountJoin.account_id == account.id)
+                        .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                        .filter(TenantAccountJoin.role.in_(["owner"]))
+                        .filter(Tenant.status == TenantStatus.NORMAL)
+                        .one_or_none()
+                    )  # TODO: only owner information is required, so only one is returned.
+                    if tenant_account_join:
+                        tenant, ta = tenant_account_join
+                        account.current_tenant = tenant
+                        
+                else:
+                    # Create user account if it doesn't exist
+                    account = RegisterService.register(
+                        email=user_email,
+                        name=nick_name or user_name,
+                        password=user_email,
+                        create_workspace_required=True,
+                    )
+                    
+                kwargs["account"] = account
+                return view_func(*args, **kwargs)
+                
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Invalid sf-user header format: {str(e)}")
+                raise Unauthorized(f"Invalid sf-user header format: {str(e)}")
+            except Exception as e:
+                print(f"Failed to validate sf-user token: {str(e)}")
+                raise Unauthorized(f"Failed to validate sf-user token: {str(e)}")
+        
+        return decorated_view
+    
+    if view is None:
+        return decorator
+    else:
+        return decorator(view)
+        
+def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_view(*args, **kwargs):
+            if not kwargs.get("app_id"):
+                raise ValueError("missing app_id in path parameters")
+
+            app_id = kwargs.get("app_id")
+            app_id = str(app_id)
+
+            del kwargs["app_id"]
+            if not kwargs.get("account"):
+                raise ValueError("missing account in path parameters")
+            account = kwargs.get("account")
+
+            app_model = (
+                db.session.query(App)
+                .filter(App.id == app_id, App.tenant_id == account.current_tenant.id, App.status == "normal")
+                .first()
+            )
+
+            if not app_model:
+                raise AppNotFoundError()
+
+            app_mode = AppMode.value_of(app_model.mode)
+            if app_mode == AppMode.CHANNEL:
+                raise AppNotFoundError()
+
+            if mode is not None:
+                if isinstance(mode, list):
+                    modes = mode
+                else:
+                    modes = [mode]
+
+                if app_mode not in modes:
+                    mode_values = {m.value for m in modes}
+                    raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+
+            kwargs["app_model"] = app_model
+
+            return view_func(*args, **kwargs)
+
+        return decorated_view
+
+    if view is None:
+        return decorator
+    else:
+        return decorator(view)
 
 
 def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str] = None) -> EndUser:
