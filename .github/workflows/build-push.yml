@@ -16,8 +16,8 @@ concurrency:
 env:
   DOCKERHUB_USER: ${{ secrets.REGISTRY_USERNAME }}
   DOCKERHUB_TOKEN: ${{ secrets.REGISTRY_PASSWORD }}
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'sf-service/dify-web' }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'sf-service/dify-api' }}
+  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'https://registry.cn-beijing.aliyuncs.com/sf-service/dify-web' }}
+  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'https://registry.cn-beijing.aliyuncs.com/sf-service/dify-api' }}
 
 jobs:
   build:
