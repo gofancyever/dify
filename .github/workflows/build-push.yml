@@ -16,13 +16,13 @@ concurrency:
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
+  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'registry.cn-beijing.aliyuncs.com/sf-service/dify-web' }}
+  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'registry.cn-beijing.aliyuncs.com/sf-service/dify-api' }}
 
 jobs:
   build:
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
-    if: github.repository == 'langgenius/dify'
+    if: github.repository == 'gofancyever/dify'
     strategy:
       matrix:
         include:
@@ -30,18 +30,18 @@ jobs:
             image_name_env: "DIFY_API_IMAGE_NAME"
             context: "api"
             platform: linux/amd64
-          - service_name: "build-api-arm64"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            context: "api"
-            platform: linux/arm64
+          # - service_name: "build-api-arm64"
+          #   image_name_env: "DIFY_API_IMAGE_NAME"
+          #   context: "api"
+          #   platform: linux/arm64
           - service_name: "build-web-amd64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             context: "web"
             platform: linux/amd64
-          - service_name: "build-web-arm64"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
-            platform: linux/arm64
+          # - service_name: "build-web-arm64"
+          #   image_name_env: "DIFY_WEB_IMAGE_NAME"
+          #   context: "web"
+          #   platform: linux/arm64
 
     steps:
       - name: Prepare
@@ -52,6 +52,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
+          registry: registry.cn-beijing.aliyuncs.com
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
@@ -98,7 +99,7 @@ jobs:
   create-manifest:
     needs: build
     runs-on: ubuntu-latest
-    if: github.repository == 'langgenius/dify'
+    if: github.repository == 'gofancyever/dify'
     strategy:
       matrix:
         include:
@@ -119,6 +120,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
+          registry: registry.cn-beijing.aliyuncs.com
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
@@ -147,3 +149,25 @@ jobs:
           IMAGE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"
+
+      - name: Trigger Jenkins build
+        env:
+          TOKEN: ${{ secrets.JENKINS_WEBHOOK_TOKEN }}
+          JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
+          IMAGE_TAG: ${{ steps.meta.outputs.version }}
+        run: |
+          if [ "${{ matrix.context }}" = "web" ]; then
+            curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
+              -H 'Content-Type: application/json; charset=utf-8' \
+              -d "{
+                  \"name\": \"sf-dify-web\",
+                  \"tag\": \"$IMAGE_TAG\"
+                }"
+          elif [ "${{ matrix.context }}" = "api" ]; then
+            curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
+              -H 'Content-Type: application/json; charset=utf-8' \
+              -d "{
+                  \"name\": \"sf-dify-api\",
+                  \"tag\": \"$IMAGE_TAG\"
+                }"
+          fi
