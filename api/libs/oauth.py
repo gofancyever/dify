@@ -131,8 +131,6 @@ class GoogleOAuth(OAuth):
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         return OAuthUserInfo(id=str(raw_info["sub"]), name="", email=raw_info["email"])
-
-
 class ShufengOAuth(OAuth):
     _AUTH_URL = "https://sso.shufengdata.com/oauth/authorize"
     _TOKEN_URL = "https://sso.shufengdata.com/oauth/token"

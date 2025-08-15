@@ -185,7 +185,6 @@ class WorkflowEntry:
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
-
         try:
             # run node
             generator = node_instance.run()

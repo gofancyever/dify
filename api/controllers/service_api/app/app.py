@@ -2,11 +2,11 @@
 from typing import cast
 
 import flask_restful
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful import Resource, marshal_with, reqparse, fields as fields_fields
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
-
+from controllers.common import fields
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import get_app_model, validate_app_token, validate_sf_token
@@ -20,9 +20,9 @@ from services.app_service import AppService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 api_key_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "token": fields.String,
+    "id": fields_fields.String,
+    "type": fields_fields.String,
+    "token": fields_fields.String,
     "last_used_at": TimestampField,
     "created_at": TimestampField,
 }
@@ -32,6 +32,7 @@ class AppParameterApi(Resource):
     """Resource for app variables."""
 
     @validate_app_token
+    @marshal_with(fields.parameters_fields)
     def get(self, app_model: App):
         """Retrieve app parameters."""
         if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
