@@ -57,7 +57,7 @@ const SwrInitor = ({
           return
         }
         if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
-          const sfToken = localStorage.getItem('accessToken')
+          const sfToken = localStorage.getItem('accessToken') || decodeURIComponent(searchParams.get('sf_token') || '')
           if (sfToken) {
             router.replace(`/oauth-callback?sf_token=${sfToken}&redirect_url=${pathname}`)
             return

@@ -150,24 +150,24 @@ jobs:
         run: |
           docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"
 
-      - name: Trigger Jenkins build
-        env:
-          TOKEN: ${{ secrets.JENKINS_WEBHOOK_TOKEN }}
-          JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
-          IMAGE_TAG: ${{ steps.meta.outputs.version }}
-        run: |
-          if [ "${{ matrix.context }}" = "web" ]; then
-            curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
-              -H 'Content-Type: application/json; charset=utf-8' \
-              -d "{
-                  \"name\": \"sf-dify-web\",
-                  \"tag\": \"$IMAGE_TAG\"
-                }"
-          elif [ "${{ matrix.context }}" = "api" ]; then
-            curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
-              -H 'Content-Type: application/json; charset=utf-8' \
-              -d "{
-                  \"name\": \"sf-dify-api\",
-                  \"tag\": \"$IMAGE_TAG\"
-                }"
-          fi
+      # - name: Trigger Jenkins build
+      #   env:
+      #     TOKEN: ${{ secrets.JENKINS_WEBHOOK_TOKEN }}
+      #     JENKINS_WEBHOOK_URL: ${{ secrets.JENKINS_WEBHOOK_URL }}
+      #     IMAGE_TAG: ${{ steps.meta.outputs.version }}
+      #   run: |
+      #     if [ "${{ matrix.context }}" = "web" ]; then
+      #       curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
+      #         -H 'Content-Type: application/json; charset=utf-8' \
+      #         -d "{
+      #             \"name\": \"sf-dify-web\",
+      #             \"tag\": \"$IMAGE_TAG\"
+      #           }"
+      #     elif [ "${{ matrix.context }}" = "api" ]; then
+      #       curl -X "POST" "$JENKINS_WEBHOOK_URL/generic-webhook-trigger/invoke?token=$TOKEN" \
+      #         -H 'Content-Type: application/json; charset=utf-8' \
+      #         -d "{
+      #             \"name\": \"sf-dify-api\",
+      #             \"tag\": \"$IMAGE_TAG\"
+      #           }"
+      #     fi
