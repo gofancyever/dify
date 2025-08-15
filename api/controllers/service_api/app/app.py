@@ -2,10 +2,12 @@
 from typing import cast
 
 import flask_restful
-from flask_restful import Resource, marshal_with, reqparse, fields as fields_fields
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import fields as fields_fields
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
+
 from controllers.common import fields
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
